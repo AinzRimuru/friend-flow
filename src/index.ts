@@ -2,19 +2,26 @@ import { Hono } from 'hono';
 import type { Env } from './types';
 import api from './routes/api';
 import { handleScheduled } from './services/scheduler';
-import { getRawBase } from './services/config';
 
 const app = new Hono<{ Bindings: Env }>();
+
+// CORS
+app.use('*', async (c, next) => {
+  await next();
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type');
+});
+app.options('*', (c) => c.text('', 204));
 
 // API 路由
 app.route('/api', api);
 
-// 图片代理：重定向到 GitHub raw URL
+// 图片代理：重定向到图片资源地址
 app.get('/images/:path{.+}', async (c) => {
   const path = c.req.param('path');
-  const base = getRawBase(c.env);
-  const targetUrl = `${base}/${path}`;
-  return c.redirect(targetUrl, 302);
+  const base = c.env.IMAGES_BASE.replace(/\/+$/, '');
+  return c.redirect(`${base}/${path}`, 302);
 });
 
 // SPA 静态资源由 Cloudflare Workers Assets 自动处理
