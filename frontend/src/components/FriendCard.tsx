@@ -8,7 +8,7 @@ interface FriendCardProps {
 
 export default function FriendCard({ friend }: FriendCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+    <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 p-5 hover:shadow-md transition-shadow">
       {/* 头部：图标 + 名称 + 状态 */}
       <div className="flex items-start gap-3 mb-4">
         <img
