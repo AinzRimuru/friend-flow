@@ -1,0 +1,17 @@
+name = "friend-flow"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[triggers]
+crons = ["0 1 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "friend-flow-db"
+database_id = "a1d60591-8c0a-4009-bdfb-78ca2144935c"
+
+[vars]
+GITHUB_RAW_BASE = "https://raw.githubusercontent.com/AinzRimuru/friend_flow_apply/refs/heads/master"
+
+[assets]
+directory = "./frontend/dist"
