@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "cd frontend && npm install && npm run build && cd .. && wrangler deploy",
     "db:init": "wrangler d1 execute FRIEND_FLOW_DB --file=./schema.sql",
     "build:frontend": "cd frontend && npm run build",
     "dev:frontend": "cd frontend && npm run dev"
