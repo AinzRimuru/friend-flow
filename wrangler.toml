@@ -12,6 +12,7 @@ database_id = "a1d60591-8c0a-4009-bdfb-78ca2144935c"
 
 [vars]
 GITHUB_RAW_BASE = "https://ainzrimuru.github.io/friend_flow_apply"
+IMAGES_BASE = "https://ainzrimuru.github.io/friend_flow_apply"
 
 [assets]
 directory = "./frontend/dist"

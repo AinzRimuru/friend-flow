@@ -53,5 +53,6 @@ export interface AtomEntry {
 // Cloudflare Workers 环境 bindings
 export interface Env {
   DB: D1Database;
-  GITHUB_RAW_BASE: string; // GitHub raw 基础 URL，如 https://raw.githubusercontent.com/owner/repo/branch
+  GITHUB_RAW_BASE: string;   // 配置文件地址，如 GitHub Pages
+  IMAGES_BASE: string;        // 图片资源地址，可与配置地址不同
 }
