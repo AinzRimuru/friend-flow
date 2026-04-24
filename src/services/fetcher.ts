@@ -82,6 +82,7 @@ function fetchWithTimeout(url: string, timeoutMs: number): Promise<string> {
  * 获取所有友链的文章和状态（用于 API 响应）
  */
 export async function getAllFriendData(env: Env) {
+  const imagesBase = env.IMAGES_BASE.replace(/\/+$/, '');
   const friends = await getFriendsConfig(env);
   const results = [];
 
@@ -95,10 +96,10 @@ export async function getAllFriendData(env: Env) {
     ]);
 
     const s = status as any;
-    // icon 为相对路径时，解析为 /images/ 代理路径
+    // icon 为相对路径时，直接拼接 CDN 地址
     const iconUrl = friend.icon.startsWith('http')
       ? friend.icon
-      : `/images/${friend.icon.replace(/^\/+/, '')}`;
+      : `${imagesBase}/${friend.icon.replace(/^\/+/, '')}`;
 
     results.push({
       name: friend.name,
