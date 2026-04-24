@@ -2,6 +2,10 @@
 
 友链互助系统 —— 自动抓取友链博客的最新文章，提供 API 和展示页面。
 
+**在线预览**: [friend.rimuru.work](https://friend.rimuru.work/)
+
+**友链申请**: [AinzRimuru/friend_flow_apply](https://github.com/AinzRimuru/friend_flow_apply)
+
 ## 架构
 
 - **后端**: Cloudflare Workers + Hono
