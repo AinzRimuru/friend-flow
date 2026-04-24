@@ -2,9 +2,11 @@ import type { ReactNode } from 'react';
 
 interface LayoutProps {
   children: ReactNode;
+  currentPage: string;
+  onNavigate: (page: string) => void;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="bg-blur" />
@@ -16,14 +18,28 @@ export default function Layout({ children }: LayoutProps) {
             <h1 className="text-lg font-bold text-gray-900">Friend Flow</h1>
             <p className="text-xs text-gray-400">友链互助 · 文章同步</p>
           </div>
-          <a
-            href="https://github.com/AinzRimuru/friend_flow_apply"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto text-sm text-blue-500 hover:text-blue-600 transition-colors"
-          >
-            申请友链
-          </a>
+          <nav className="ml-auto flex items-center gap-4">
+            <button
+              onClick={() => onNavigate('home')}
+              className={`text-sm transition-colors ${currentPage === 'home' ? 'text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              友链
+            </button>
+            <button
+              onClick={() => onNavigate('doc')}
+              className={`text-sm transition-colors ${currentPage === 'doc' ? 'text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              接入文档
+            </button>
+            <a
+              href="https://github.com/AinzRimuru/friend_flow_apply"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-500 hover:text-blue-600 transition-colors"
+            >
+              申请友链
+            </a>
+          </nav>
         </div>
       </header>
 
