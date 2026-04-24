@@ -80,9 +80,34 @@ npm run deploy
 
 | 接口 | 说明 |
 |------|------|
-| `GET /api/friend-links` | 获取所有友链及最近文章 |
+| `GET /api/friend-links` | 获取友链及最近文章 |
 | `GET /api/refresh-config` | 强制刷新配置缓存 |
 | `GET /images/:path` | 图片代理（重定向到配置仓库） |
+
+### GET /api/friend-links
+
+支持以下查询参数：
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `limit` | int | 最多返回的友链数量，不足则全部返回，超出则随机选取 |
+| `exclude` | string | 排除的友链 URL，可多次传参 |
+
+示例：
+
+```bash
+# 获取全部友链
+GET /api/friend-links
+
+# 最多返回 5 个友链（随机选取）
+GET /api/friend-links?limit=5
+
+# 排除自己的博客
+GET /api/friend-links?exclude=https://blog.example.com
+
+# 组合使用：排除两个站点，随机返回 3 个
+GET /api/friend-links?limit=3&exclude=https://a.com&exclude=https://b.com
+```
 
 ## 本地开发
 

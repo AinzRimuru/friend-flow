@@ -6,10 +6,32 @@ import { refreshConfig } from '../services/config';
 const api = new Hono<{ Bindings: Env }>();
 
 // 获取友链列表（查询前自动刷新过期的缓存数据）
+// ?limit=N        最多返回 N 个友链（随机选取）
+// &exclude=url    排除指定友链（可多次传参，如 &exclude=url1&exclude=url2）
 api.get('/friend-links', async (c) => {
   await refreshAllIfNeeded(c.env);
+
+  let exclude: string[] = [];
+  const excludeParam = c.req.queries('exclude');
+  if (excludeParam) {
+    exclude = excludeParam.map((u) => u.replace(/\/+$/, ''));
+  }
+
+  const limitParam = c.req.query('limit');
+  const limit = limitParam ? parseInt(limitParam, 10) : 0;
+
   const data = await getAllFriendData(c.env);
-  return c.json(data);
+
+  // 排除指定的友链
+  const filtered = data.filter((f) => !exclude.includes(f.url.replace(/\/+$/, '')));
+
+  // 随机选取
+  if (limit > 0 && limit < filtered.length) {
+    const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+    return c.json(shuffled.slice(0, limit));
+  }
+
+  return c.json(filtered);
 });
 
 // 强制刷新配置缓存（从 GitHub 重新拉取 friends.json）
