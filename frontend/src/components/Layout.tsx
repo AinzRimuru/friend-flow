@@ -48,7 +48,8 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-6 text-center text-xs text-gray-400">
-        Friend Flow &mdash; Powered by Cloudflare Workers
+        <p>Friend Flow &mdash; Powered by Cloudflare Workers</p>
+        <p className="mt-1">Special thanks to <a href="https://linux.do" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-600 transition-colors">LINUX DO</a></p>
       </footer>
     </div>
   );

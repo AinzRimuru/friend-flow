@@ -132,3 +132,7 @@ npm run dev
 ## License
 
 MIT
+
+## 鸣谢
+
+[LINUX DO - 新的理想型社区](https://linux.do)
