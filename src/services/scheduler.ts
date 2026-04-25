@@ -1,30 +1,50 @@
 import type { FriendConfig, Env } from '../types';
-import { resetStoppedSites } from './cache';
 import { getFriendsConfig } from './config';
+import { refreshAllIfNeeded } from './fetcher';
+import { recordSuccess, recordFailure } from './cache';
 import { parseAtomXml } from '../utils/atom-parser';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_ARTICLES_PER_FRIEND = 10;
 
 /**
- * 定时任务：凌晨 1 点重试所有停止抓取的站点
+ * 定时任务：
+ * - 每 30 分钟：刷新所有缓存过期的友链
+ * - 凌晨 1 点：仅尝试被停止的站点，成功后才取消停止状态
  */
-export async function handleScheduled(env: Env): Promise<void> {
-  const resetUrls = await resetStoppedSites(env.DB);
+export async function handleScheduled(env: Env, cron: string): Promise<void> {
+  // 凌晨 1 点（UTC 17:00，即北京时间 01:00）：仅重试被停止的站点
+  if (cron === '0 17 * * *') {
+    await retryStoppedSites(env);
+    return;
+  }
 
-  if (resetUrls.length === 0) return;
+  // 每 30 分钟：常规刷新缓存过期的友链
+  await refreshAllIfNeeded(env);
+}
 
+/**
+ * 尝试所有被停止的站点，仅成功时取消停止状态
+ */
+async function retryStoppedSites(env: Env): Promise<void> {
   const friends = await getFriendsConfig(env);
-  const toRetry = friends.filter((f) => resetUrls.includes(f.url));
+  const results = await env.DB
+    .prepare('SELECT friend_url FROM fetch_status WHERE stopped = 1')
+    .all<{ friend_url: string }>();
+
+  const stoppedUrls = new Set(results.results.map((r) => r.friend_url));
+  const toRetry = friends.filter((f) => stoppedUrls.has(f.url));
+
+  if (toRetry.length === 0) return;
 
   // 并发重试，每批最多 10 个
   for (let i = 0; i < toRetry.length; i += 10) {
     const batch = toRetry.slice(i, i + 10);
-    await Promise.allSettled(batch.map((f) => retryFetch(env.DB, f)));
+    await Promise.allSettled(batch.map((f) => retryOne(env, f)));
   }
 }
 
-async function retryFetch(db: D1Database, friend: FriendConfig): Promise<void> {
+async function retryOne(env: Env, friend: FriendConfig): Promise<void> {
   const feedUrl = friend.feedUrl || `${friend.url.replace(/\/+$/, '')}/atom.xml`;
 
   try {
@@ -40,30 +60,18 @@ async function retryFetch(db: D1Database, friend: FriendConfig): Promise<void> {
     const entries = parseAtomXml(xml).slice(0, MAX_ARTICLES_PER_FRIEND);
 
     // 更新文章
-    await db.prepare('DELETE FROM articles WHERE friend_url = ?').bind(friend.url).run();
+    await env.DB.prepare('DELETE FROM articles WHERE friend_url = ?').bind(friend.url).run();
 
     if (entries.length > 0) {
-      const stmt = db.prepare(
+      const stmt = env.DB.prepare(
         'INSERT INTO articles (friend_url, title, url, publish_time) VALUES (?, ?, ?, ?)'
       );
-      await db.batch(entries.map((e) => stmt.bind(friend.url, e.title, e.url, e.publishTime)));
+      await env.DB.batch(entries.map((e) => stmt.bind(friend.url, e.title, e.url, e.publishTime)));
     }
 
-    // 标记成功
-    const now = new Date().toISOString();
-    await db
-      .prepare(
-        `UPDATE fetch_status SET last_fetch_time = ?, status = 'ok', consecutive_failures = 0, next_retry_time = NULL, stopped = 0, error_message = NULL WHERE friend_url = ?`
-      )
-      .bind(now, friend.url)
-      .run();
+    // 成功才取消停止状态
+    await recordSuccess(env.DB, friend.url);
   } catch (err: any) {
-    // 重试失败，递增计数但不重新设置 stopped（下次定时任务再来）
-    await db
-      .prepare(
-        `UPDATE fetch_status SET consecutive_failures = consecutive_failures + 1, error_message = ? WHERE friend_url = ?`
-      )
-      .bind(err?.message || 'Unknown error', friend.url)
-      .run();
+    // 失败不改变状态，保持 stopped=1
   }
 }

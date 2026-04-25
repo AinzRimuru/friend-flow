@@ -1,15 +1,14 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { refreshAllIfNeeded, getAllFriendData } from '../services/fetcher';
+import { getAllFriendData } from '../services/fetcher';
 import { refreshConfig } from '../services/config';
 
 const api = new Hono<{ Bindings: Env }>();
 
-// 获取友链列表（查询前自动刷新过期的缓存数据）
+// 获取友链列表（直接返回 D1 缓存数据，刷新由定时任务处理）
 // ?limit=N        最多返回 N 个友链（随机选取）
 // &exclude=url    排除指定友链（可多次传参，如 &exclude=url1&exclude=url2）
 api.get('/friend-links', async (c) => {
-  await refreshAllIfNeeded(c.env);
 
   let exclude: string[] = [];
   const excludeParam = c.req.queries('exclude');

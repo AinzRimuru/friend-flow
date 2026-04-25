@@ -12,7 +12,7 @@ app.use('*', async (c, next) => {
   c.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
   c.header('Access-Control-Allow-Headers', 'Content-Type');
 });
-app.options('*', (c) => c.text('', 204));
+app.options('*', (c) => new Response(null, { status: 204 }));
 
 // API 路由
 app.route('/api', api);
@@ -34,6 +34,6 @@ export default {
   fetch: app.fetch,
 
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(handleScheduled(env));
+    ctx.waitUntil(handleScheduled(env, event.cron));
   },
 };
