@@ -33,7 +33,7 @@ api.get('/friend-links', async (c) => {
   return c.json(filtered);
 });
 
-// 强制刷新配置缓存（从 GitHub 重新拉取 friends.json）
+// 强制刷新配置缓存（从 GitHub 重新拉取 friends.yaml）
 api.get('/refresh-config', async (c) => {
   try {
     const config = await refreshConfig(c.env);
