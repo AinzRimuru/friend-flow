@@ -35,7 +35,12 @@ async function retryStoppedSites(env: Env): Promise<void> {
   const stoppedUrls = new Set(results.results.map((r) => r.friend_url));
   const toRetry = friends.filter((f) => stoppedUrls.has(f.url));
 
-  if (toRetry.length === 0) return;
+  if (toRetry.length === 0) {
+    console.log('[retry] no stopped sites to retry');
+    return;
+  }
+
+  console.log(`[retry] retrying ${toRetry.length} stopped site(s): ${toRetry.map((f) => f.name).join(', ')}`);
 
   // 并发重试，每批最多 10 个
   for (let i = 0; i < toRetry.length; i += 10) {
@@ -64,14 +69,16 @@ async function retryOne(env: Env, friend: FriendConfig): Promise<void> {
 
     if (entries.length > 0) {
       const stmt = env.DB.prepare(
-        'INSERT INTO articles (friend_url, title, url, publish_time) VALUES (?, ?, ?, ?)'
+        'INSERT OR IGNORE INTO articles (friend_url, title, url, publish_time) VALUES (?, ?, ?, ?)'
       );
       await env.DB.batch(entries.map((e) => stmt.bind(friend.url, e.title, e.url, e.publishTime)));
     }
 
     // 成功才取消停止状态
     await recordSuccess(env.DB, friend.url);
+    console.log(`[retry] ${friend.name} recovered, ${entries.length} articles`);
   } catch (err: any) {
     // 失败不改变状态，保持 stopped=1
+    console.error(`[retry] ${friend.name} (${feedUrl}) still failing: ${err?.message || err}`);
   }
 }

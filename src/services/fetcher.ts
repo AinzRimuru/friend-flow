@@ -28,6 +28,13 @@ export async function refreshAllIfNeeded(env: Env): Promise<void> {
     if (need) toRefresh.push(friend);
   }
 
+  if (toRefresh.length === 0) {
+    console.log('[refresh] no friends need refresh');
+    return;
+  }
+
+  console.log(`[refresh] refreshing ${toRefresh.length} friend(s): ${toRefresh.map((f) => f.name).join(', ')}`);
+
   // 分批并发，每批最多 MAX_CONCURRENT
   for (let i = 0; i < toRefresh.length; i += MAX_CONCURRENT) {
     const batch = toRefresh.slice(i, i + MAX_CONCURRENT);
@@ -52,7 +59,7 @@ async function fetchAndStore(db: D1Database, friend: FriendConfigWithFeed): Prom
     await db.prepare('DELETE FROM articles WHERE friend_url = ?').bind(friend.url).run();
 
     const stmt = db.prepare(
-      'INSERT INTO articles (friend_url, title, url, publish_time) VALUES (?, ?, ?, ?)'
+      'INSERT OR IGNORE INTO articles (friend_url, title, url, publish_time) VALUES (?, ?, ?, ?)'
     );
     const batchStmts = entries.map((e) =>
       stmt.bind(friend.url, e.title, e.url, e.publishTime)
@@ -60,8 +67,10 @@ async function fetchAndStore(db: D1Database, friend: FriendConfigWithFeed): Prom
     await db.batch(batchStmts);
 
     await recordSuccess(db, friend.url);
+    console.log(`[fetch] ${friend.name} (${friend.resolvedFeedUrl}) -> ${entries.length} articles`);
   } catch (err: any) {
     const isTimeout = err?.message?.includes('timeout') || err?.name === 'TimeoutError';
+    console.error(`[fetch] ${friend.name} (${friend.resolvedFeedUrl}) failed: ${err?.message || err}`);
     await recordFailure(db, friend.url, err?.message || 'Unknown error', isTimeout);
   }
 }
