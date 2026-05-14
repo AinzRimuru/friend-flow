@@ -16,3 +16,6 @@ IMAGES_BASE = "https://friend-cdn.rimuru.work"
 
 [assets]
 directory = "./frontend/dist"
+
+[observability]
+enabled = true
