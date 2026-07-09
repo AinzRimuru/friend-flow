@@ -6,6 +6,13 @@ import { getFriendsConfig } from './config';
 const MAX_CONCURRENT = 10;
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_ARTICLES_PER_FRIEND = 10;
+const MAX_FEED_BYTES = 2 * 1024 * 1024; // 2MB，防御性上限，正常 atom feed 远小于此
+const ACCEPTED_CONTENT_TYPES = [
+  'application/atom+xml',
+  'application/rss+xml',
+  'application/xml',
+  'text/xml',
+];
 
 type FriendConfigWithFeed = FriendConfig & { resolvedFeedUrl: string };
 
@@ -75,14 +82,32 @@ async function fetchAndStore(db: D1Database, friend: FriendConfigWithFeed): Prom
   }
 }
 
-function fetchWithTimeout(url: string, timeoutMs: number): Promise<string> {
+export function fetchWithTimeout(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   return fetch(url, { signal: controller.signal })
     .then(async (res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.text();
+
+      // 校验 Content-Type，拒绝把 HTML（如 SPA 首页）当 feed 解析
+      const contentType = res.headers.get('content-type') || '';
+      const baseType = contentType.split(';')[0].trim().toLowerCase();
+      if (!ACCEPTED_CONTENT_TYPES.includes(baseType)) {
+        throw new Error(`unexpected content-type: ${contentType || '(none)'}`);
+      }
+
+      // 限制响应体大小，防止超大文档同样耗尽 CPU
+      const contentLength = res.headers.get('content-length');
+      if (contentLength && parseInt(contentLength, 10) > MAX_FEED_BYTES) {
+        throw new Error(`feed too large (content-length): ${contentLength}`);
+      }
+
+      const text = await res.text();
+      if (text.length > MAX_FEED_BYTES) {
+        throw new Error(`feed too large (body): ${text.length}`);
+      }
+      return text;
     })
     .finally(() => clearTimeout(timer));
 }

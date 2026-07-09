@@ -1,7 +1,7 @@
 import type { FriendConfig, Env } from '../types';
 import { getFriendsConfig } from './config';
-import { refreshAllIfNeeded } from './fetcher';
-import { recordSuccess, recordFailure } from './cache';
+import { refreshAllIfNeeded, fetchWithTimeout } from './fetcher';
+import { recordSuccess } from './cache';
 import { parseAtomXml } from '../utils/atom-parser';
 
 const FETCH_TIMEOUT_MS = 10_000;
@@ -53,15 +53,7 @@ async function retryOne(env: Env, friend: FriendConfig): Promise<void> {
   const feedUrl = friend.feedUrl || `${friend.url.replace(/\/+$/, '')}/atom.xml`;
 
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-    const res = await fetch(feedUrl, { signal: controller.signal });
-    clearTimeout(timer);
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const xml = await res.text();
+    const xml = await fetchWithTimeout(feedUrl, FETCH_TIMEOUT_MS);
     const entries = parseAtomXml(xml).slice(0, MAX_ARTICLES_PER_FRIEND);
 
     // 更新文章
