@@ -28,6 +28,11 @@ function resolveFeedUrl(friend: FriendConfig): FriendConfigWithFeed {
  */
 export async function refreshAllIfNeeded(env: Env): Promise<void> {
   const friends = (await getFriendsConfig(env)).map(resolveFeedUrl);
+
+  // 先清理孤儿行：友链从配置移除后残留的文章/状态行会占住 articles.url 的
+  // 全局 UNIQUE 约束，导致其他友链插入相同 URL 时被 INSERT OR IGNORE 静默丢弃
+  await cleanupOrphans(env.DB, friends.map((f) => f.url));
+
   const toRefresh: FriendConfigWithFeed[] = [];
 
   for (const friend of friends) {
@@ -47,6 +52,31 @@ export async function refreshAllIfNeeded(env: Env): Promise<void> {
     const batch = toRefresh.slice(i, i + MAX_CONCURRENT);
     await Promise.allSettled(batch.map((f) => fetchAndStore(env.DB, f)));
   }
+}
+
+/**
+ * 清理孤儿行：友链从配置移除后，articles / fetch_status 中的残留行
+ * 会占住 articles.url 的全局 UNIQUE 约束，导致其他友链（尤其是相对路径
+ * URL 的 feed）插入相同 URL 时被 INSERT OR IGNORE 静默丢弃。
+ */
+async function cleanupOrphans(db: D1Database, activeUrls: string[]): Promise<void> {
+  const active = new Set(activeUrls);
+  const orphans = new Set<string>();
+
+  const [articleRows, statusRows] = await Promise.all([
+    db.prepare('SELECT DISTINCT friend_url FROM articles').all<{ friend_url: string }>(),
+    db.prepare('SELECT friend_url FROM fetch_status').all<{ friend_url: string }>(),
+  ]);
+  for (const r of articleRows.results) if (!active.has(r.friend_url)) orphans.add(r.friend_url);
+  for (const r of statusRows.results) if (!active.has(r.friend_url)) orphans.add(r.friend_url);
+
+  if (orphans.size === 0) return;
+
+  for (const url of orphans) {
+    await db.prepare('DELETE FROM articles WHERE friend_url = ?').bind(url).run();
+    await db.prepare('DELETE FROM fetch_status WHERE friend_url = ?').bind(url).run();
+  }
+  console.log(`[cleanup] removed orphan rows for: ${[...orphans].join(', ')}`);
 }
 
 /**
